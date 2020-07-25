@@ -21,7 +21,7 @@ def _num_samples(x):
     if hasattr(x, "shape") and x.shape is not None:
         if len(x.shape) == 0:
             raise TypeError("Singleton array %r cannot be considered"
-                            " a valid collection." % x)
+                            " a valid _collection." % x)
         # Check that shape is returning an integer or default to len
         # Dask dataframes may not return numeric shape[0] value
         if isinstance(x.shape[0], numbers.Integral):
