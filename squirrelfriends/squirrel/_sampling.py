@@ -12,7 +12,7 @@ def smote_sampling(data, features, label, k=5,
 
     Args:
       data (DataFrame): training data.
-      features(list of str): column names of feature to be used in knn.
+      features (list of str): column names of feature to be used in knn.
       label (str): column name of.
       k (int): `k`-nn.
       classes (dict): major and minor classes.

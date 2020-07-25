@@ -1,16 +1,52 @@
 import logging
 
+import random
+import os
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
 from lightgbm import LGBMClassifier, LGBMRegressor
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, GroupKFold
 
 from ..eagle import compute_cv_feature_importances
 
-logging.basicConfig(format="%(asctime)s %(message)s",
-                    datefmt="%m/%d/%Y %I:%M:%S %p",
-                    level=logging.INFO)
+
+def seed_everything(seed=0):
+    random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    np.random.seed(seed)
+
+
+def _log_evals_result(evals_result, metric, verbose_eval, estimator=None):
+    """Log the evaluation result.
+
+    Args:
+        evals_result (dict): evaluation results.
+        metric (str): evaluation metric name.
+        verbose_eval (int): log evaluation result per `verbose_eval` round.
+        estimator (`object`): model object.
+    """
+
+    for i in range(1, len(evals_result["training"][metric])//verbose_eval):
+        eps = i * verbose_eval
+        logging.info("{}: {} training: {} \t valid: {}".format(
+            eps, metric,
+            evals_result["training"][metric][eps-1],
+            evals_result["valid_1"][metric][eps-1]))
+
+    # log the last iteration
+    logging.info("{}: {} training: {} \t valid: {}".format(
+        len(evals_result["training"][metric]), metric,
+        evals_result["training"][metric][-1],
+        evals_result["valid_1"][metric][-1]))
+
+    # show the best iteration
+    if estimator:
+        best_score = estimator.best_score
+        logging.info("best_score at {}: {} training: {} \t valid: {}".format(
+            estimator.best_iteration, metric,
+            best_score["training"][metric],
+            best_score["valid_1"][metric]))
 
 
 class lgbSquirrel(object):
@@ -33,7 +69,7 @@ class lgbSquirrel(object):
         feature_importances_ (DataFrame): feature importance table.
     """
 
-    def __init__(self, features=None, cat_features=None,
+    def __init__(self, features="auto", cat_features="auto",
                  task="classification", eval_func=None,
                  early_stopping_rounds=50, verbose_eval=10):
         self.__model__ = "lgbSquirrel"
@@ -147,8 +183,6 @@ class lgbSquirrel(object):
 
         Args:
             trn_params (dict): params parsed into lgb.train().
-                num_iterations will be parsed as `lgb_num_iterations`.
-                lgb_num_iterations (int): number of boosting iterations.
             dtrain_params (dict): params of lgb.Dataset() for training data.
             dtest_params (dict): params of lgb.Dataset() for testing data,
                 if None, directly use `dtrain_params`.
@@ -160,11 +194,6 @@ class lgbSquirrel(object):
         self.dtrain_params = dtrain_params
         self.dtest_params = dtest_params if dtest_params else dtrain_params
         self.weight = weight
-        if "num_iterations" in self.trn_params.keys():
-            self.lgb_num_iterations = self.trn_params["num_iterations"]
-            self.trn_params.pop("num_iterations")
-        else:
-            self.lgb_num_iterations = 1000
 
     def _train_sklgb(self, data):
         """Train the model using sklearn lightgbm API.
@@ -254,12 +283,13 @@ class lgbSquirrel(object):
                              weight=self.weight)
 
         # Train model
+        evals_result = {}
         model = lgb.train(self.trn_params, d_train,
-                          num_boost_round=self.lgb_num_iterations,
                           feature_name=self.features,
                           categorical_feature=self.cat_features,
                           valid_sets=[d_train, d_test],
                           early_stopping_rounds=self.early_stopping_rounds,
+                          evals_result=evals_result,
                           verbose_eval=self.verbose_eval)
 
         # Calculate the feature importances
@@ -267,10 +297,11 @@ class lgbSquirrel(object):
         importances["feature"] = X_train.columns.values.tolist()
         importances["importance"] = model.feature_importance()
 
+        _log_evals_result(evals_result, self.verbose_eval, model)
+
         # Calculate eval_func function eval_score
         if self.eval_func:
-            y_test_pred = model.predict(X_test)  # ,
-            # num_iteration=model.best_iteration)
+            y_test_pred = model.predict(X_test)
             eval_score = self.eval_func(y_test, y_test_pred)
             logging.info("score on validation is %f" % eval_score)
         else:
@@ -287,7 +318,7 @@ class lgbSquirrel(object):
         """Train the model.
 
         Args:
-            data ((tuple of DataFrame)): training and testing data.
+            data (tuple of DataFrame): training and testing data.
 
         Returns:
             model_result (dict): result of trained model.
@@ -308,7 +339,7 @@ class lgbSquirrel(object):
 
         return model_result
 
-    def kfold_cv_lgb_train(self, X, y, n_splits, seed):
+    def kfold_cv_lgb_train(self, X, y, n_splits, seed, fold_type="KFold", groups=None):
         """Train lightGBM by Kfold cross validation.
 
         Args:
@@ -316,6 +347,9 @@ class lgbSquirrel(object):
             y (DataFrame): test data.
             n_splits (int): number of splits in Kflod().
             seed (int): random seed in Kfold().
+            fold_type (str): type of kfold algorithm, KFold or GroupKFold.
+            groups (array): group labels for the samples used
+                while splitting the dataset into train/test set.
 
         Returns:
             models (list of :obj:): list of models for each cv.
@@ -327,12 +361,18 @@ class lgbSquirrel(object):
         if self.sk_api is None:
             raise Exception("Please call build function first.")
 
-        kfold = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
+        if fold_type == "KFold":
+            kfold = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
+        elif fold_type == "GroupKFold":
+            kfold = GroupKFold(n_splits=n_splits)
 
         cv_results = []
 
-        for fold, (ind_train, ind_test) in enumerate(kfold.split(X, y)):
+        for fold, (ind_train, ind_test) in enumerate(kfold.split(X, y, groups)):
+            seed_everything(seed)
             logging.info("cv: %d out of %d" % (fold + 1, n_splits))
+            logging.info("training: {}, testing: {}".format(
+                len(ind_train), len(ind_test)))
 
             X_train, X_test = X.loc[ind_train, :], X.loc[ind_test, :]
             y_train, y_test = y[ind_train], y[ind_test]
