@@ -1,6 +1,7 @@
 import logging
 
 import random
+import os
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
@@ -12,6 +13,7 @@ from ..eagle import compute_cv_feature_importances
 
 def seed_everything(seed=0):
     random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
 
 
