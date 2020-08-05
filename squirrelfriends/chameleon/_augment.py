@@ -23,7 +23,7 @@ def get_transforms(in_size=[1024, 1024],
         to_tensorv2 (boolean): if converting it to pytorch tensor.
         bbox_params (BboxParams): Parameters for bounding boxes transforms.
         keypoint_params (KeypointParams): Parameters for keypoints transforms.
-        additional_targets (dict): Dict with keys - new target name, values - old target name. ex: {'image2': 'image'}.
+        additional_targets (dict): Dict with keys - new target name, values - old target name. ex: {"image2": "image"}.
 
     Returns:
         aug_compose (Compose): common Compose transforms for train images
@@ -78,7 +78,7 @@ def get_train_transforms(in_size=[1024, 1024],
         to_tensorv2 (boolean): if converting it to pytorch tensor.
         bbox_params (BboxParams): Parameters for bounding boxes transforms.
         keypoint_params (KeypointParams): Parameters for keypoints transforms.
-        additional_targets (dict): Dict with keys - new target name, values - old target name. ex: {'image2': 'image'}.
+        additional_targets (dict): Dict with keys - new target name, values - old target name. ex: {"image2": "image"}.
 
     Returns:
         aug_compose (Compose): common Compose transforms for train images
@@ -172,7 +172,7 @@ def get_valid_transforms(in_size=[1024, 1024],
         to_tensorv2 (boolean): if converting it to pytorch tensor.
         bbox_params (BboxParams): Parameters for bounding boxes transforms.
         keypoint_params (KeypointParams): Parameters for keypoints transforms.
-        additional_targets (dict): Dict with keys - new target name, values - old target name. ex: {'image2': 'image'}.
+        additional_targets (dict): Dict with keys - new target name, values - old target name. ex: {"image2": "image"}.
 
     Returns:
         aug_compose (Compose): common Compose transforms for valid images

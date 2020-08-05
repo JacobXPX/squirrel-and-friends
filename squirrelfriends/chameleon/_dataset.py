@@ -1,11 +1,12 @@
-from torch.utils.data import Dataset
-import torch
 import random
+
 import cv2
 import numpy as np
+import torch
+from torch.utils.data import Dataset
 
 
-class DatasetRetriever(Dataset):
+class datasetRetriever(Dataset):
     """Retrieve Dataset.
 
     Attributes:
@@ -68,11 +69,11 @@ class DatasetRetriever(Dataset):
     def generate_target(self, index, image, boxes, labels):
         image, boxes, labels = self.apply_transform(image, boxes, labels)
         target = {}
-        target['image_id'] = torch.tensor([index])
+        target["image_id"] = torch.tensor([index])
         if boxes is not None:
-            target['boxes'] = boxes
+            target["boxes"] = boxes
         if labels is not None:
-            target['labels'] = labels
+            target["labels"] = labels
         return target
 
     def apply_transform(self, image, boxes, labels):
@@ -80,34 +81,34 @@ class DatasetRetriever(Dataset):
             if boxes is not None and len(boxes) > 0:
                 for _ in range(10):
                     sample = self.transforms(**{
-                        'image': image,
-                        'bboxes': boxes,
-                        'labels': labels
+                        "image": image,
+                        "bboxes": boxes,
+                        "labels": labels
                     })
-                    if len(sample['bboxes']) > 0:
-                        image = sample['image']
+                    if len(sample["bboxes"]) > 0:
+                        image = sample["image"]
                         boxes = torch.stack(
-                            tuple(map(torch.tensor, zip(*sample['bboxes'])))).permute(1, 0)
-                        # boxes[:, [0, 1, 2, 3]] = target['boxes'][:, [
+                            tuple(map(torch.tensor, zip(*sample["bboxes"])))).permute(1, 0)
+                        # boxes[:, [0, 1, 2, 3]] = target["boxes"][:, [
                         #     1, 0, 3, 2]]  # yxyx: be warning
                         labels = torch.stack(
-                            tuple(map(torch.tensor, zip(*sample['labels'])))).permute(1, 0)
+                            tuple(map(torch.tensor, zip(*sample["labels"])))).permute(1, 0)
                         break
             else:
                 boxes = None
                 if labels is not None:
                     sample = self.transforms(**{
-                        'image': image,
-                        'labels': labels
+                        "image": image,
+                        "labels": labels
                     })
-                    image = sample['image']
-                    labels = torch.tensor(sample['labels'])
+                    image = sample["image"]
+                    labels = torch.tensor(sample["labels"])
                 else:
                     labels = None
                     sample = self.transforms(**{
-                        'image': image,
+                        "image": image,
                     })
-                    image = sample['image']
+                    image = sample["image"]
 
         return image, boxes, labels
 
@@ -119,7 +120,7 @@ class DatasetRetriever(Dataset):
         image_id = (image_id if "pseudo_" not in image_id
                     else image_id.replace("pseudo_", ""))
         image = cv2.imread(
-            f'{self.image_path}/{image_id}.jpg', cv2.IMREAD_COLOR)
+            f"{self.image_path}/{image_id}.jpg", cv2.IMREAD_COLOR)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
         image /= 255.0
         return image
@@ -127,9 +128,9 @@ class DatasetRetriever(Dataset):
     def load_image_only(self, index):
         image = self.load_image(index)
         if self.transforms:
-            sample = {'image': image}
+            sample = {"image": image}
             sample = self.transforms(**sample)
-            image = sample['image']
+            image = sample["image"]
         return image
 
     def load_image_and_boxes(self, index):
@@ -138,14 +139,14 @@ class DatasetRetriever(Dataset):
         image = self.load_image(index)
 
         if self.bboxes is not None:
-            bbox = self.bboxes[self.bboxes['image_id'] == image_id]
-            boxes = bbox[['x_min', 'y_min', 'x_max', 'y_max']].values
+            bbox = self.bboxes[self.bboxes["image_id"] == image_id]
+            boxes = bbox[["x_min", "y_min", "x_max", "y_max"]].values
         else:
             boxes = None
 
         if self.llabels is not None:
-            llabel = self.llabels[self.llabels['image_id'] == image_id]
-            labels = llabel[['label']].values
+            llabel = self.llabels[self.llabels["image_id"] == image_id]
+            labels = llabel[["label"]].values
         else:
             labels = None
 
