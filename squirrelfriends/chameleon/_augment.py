@@ -5,6 +5,7 @@ from albumentations.pytorch.transforms import ToTensorV2
 def get_transforms(in_size=[1024, 1024],
                    out_size=[512, 512],
                    prob=0.5,
+                   level="medium",
                    add_cutout=True,
                    to_tensorv2=True,
                    bbox_params=None,
@@ -19,6 +20,7 @@ def get_transforms(in_size=[1024, 1024],
         in_size (int, int]): size of input image.
         out_size ([int, int]): size of output image.
         prob (float): probability of applying all list of transforms. Default: 0.5
+        level (str): light, medium, heavy, default medium
         add_cutout (boolean): if adding cutout on image.
         to_tensorv2 (boolean): if converting it to pytorch tensor.
         bbox_params (BboxParams): Parameters for bounding boxes transforms.
@@ -34,6 +36,7 @@ def get_transforms(in_size=[1024, 1024],
         in_size=in_size,
         out_size=out_size,
         prob=prob,
+        level=level,
         add_cutout=add_cutout,
         to_tensorv2=to_tensorv2,
         bbox_params=bbox_params,
@@ -59,6 +62,7 @@ def get_transforms(in_size=[1024, 1024],
 def get_train_transforms(in_size=[1024, 1024],
                          out_size=[512, 512],
                          prob=0.5,
+                         level="medium",
                          add_cutout=True,
                          to_tensorv2=True,
                          bbox_params=None,
@@ -74,6 +78,7 @@ def get_train_transforms(in_size=[1024, 1024],
         in_size (int, int]): size of input image.
         out_size ([int, int]): size of output image.
         prob (float): probability of applying all list of transforms. Default: 0.5
+        level (str): light, medium, heavy, default medium
         add_cutout (boolean): if adding cutout on image.
         to_tensorv2 (boolean): if converting it to pytorch tensor.
         bbox_params (BboxParams): Parameters for bounding boxes transforms.
@@ -84,39 +89,86 @@ def get_train_transforms(in_size=[1024, 1024],
         aug_compose (Compose): common Compose transforms for train images
     """
 
-    compose_lst = [
+    if level == "light":
+        level_ratio = 0.5
+    elif level == "medium":
+        level_ratio = 1
+    elif level == "heavy":
+        level_ratio = 2
+    crop = [
         aug.RandomSizedCrop(
             min_max_height=(
-                int(in_size[1] * 0.7), int(in_size[1] * 1.0)),
+                int(in_size[1] * (1.0 - level_ratio * 0.25)), int(in_size[1] * 1.0)),
             height=in_size[0],
             width=in_size[1],
             p=prob
         ),
+    ]
+    RGB = [
         aug.OneOf([
             aug.RandomBrightnessContrast(
-                brightness_limit=0.2,
-                contrast_limit=0.2,
+                brightness_limit=0.2 * level_ratio,
+                contrast_limit=0.2 * level_ratio,
                 p=prob
             ),
             aug.RandomContrast(
-                limit=0.2,
-                p=prob
-            ),
-            aug.RGBShift(
-                r_shift_limit=10,
-                g_shift_limit=10,
-                b_shift_limit=10,
-                p=prob
-            ),
-            aug.HueSaturationValue(
-                hue_shift_limit=10,
-                sat_shift_limit=10,
-                val_shift_limit=10,
+                limit=0.2 * level_ratio,
                 p=prob
             ),
         ],
             p=prob
         ),
+        aug.OneOf([
+            aug.RGBShift(
+                r_shift_limit=int(20 * level_ratio),
+                g_shift_limit=int(20 * level_ratio),
+                b_shift_limit=int(20 * level_ratio),
+                p=prob
+            ),
+            aug.HueSaturationValue(
+                hue_shift_limit=int(20 * level_ratio),
+                sat_shift_limit=int(20 * level_ratio),
+                val_shift_limit=int(20 * level_ratio),
+                p=prob
+            ),
+        ],
+            p=prob
+        ),
+        aug.OneOf([
+            aug.RandomGamma(
+                gamma_limit=(int(80 * level_ratio), int(120 * level_ratio)),
+                p=prob
+            ),
+            aug.CLAHE(
+                clip_limit=4.0 * level_ratio,
+                tile_grid_size=(int(8 * level_ratio), int(8 * level_ratio)),
+                p=prob
+            ),
+        ],
+            p=prob
+        ),
+        aug.OneOf([
+            aug.MotionBlur(
+                blur_limit=int(7 * level_ratio),
+                p=prob
+            ),
+            aug.MedianBlur(
+                blur_limit=int(7 * level_ratio),
+                p=prob
+            ),
+            aug.GaussianBlur(
+                blur_limit=int(7 * level_ratio),
+                p=prob
+            ),
+        ],
+            p=prob
+        ),
+        aug.GaussNoise(
+            var_limit=(10.0 * level_ratio, 50.0 * level_ratio),
+            p=prob
+        ),
+    ]
+    rotate = [
         aug.OneOf([
             aug.HorizontalFlip(p=prob),
             aug.VerticalFlip(p=prob),
@@ -124,6 +176,12 @@ def get_train_transforms(in_size=[1024, 1024],
         ],
             p=prob
         ),
+    ]
+
+    compose_lst = [
+        *crop,
+        *RGB,
+        *rotate,
         aug.Resize(
             height=out_size[0],
             width=out_size[1],
