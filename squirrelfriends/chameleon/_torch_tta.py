@@ -1,5 +1,4 @@
-
-""" Predict with Test Time Augmentation (TTA)
+"""Predict with Test Time Augmentation (TTA) for Pytorch
    Additional to the original test/validation images, apply image augmentation to them
    (just like for training images). The intent
    is to increase the accuracy of predictions by examining the images using multiple
@@ -7,6 +6,7 @@
 """
 
 from itertools import product
+import torch
 
 import numpy as np
 
@@ -46,10 +46,10 @@ class rotate90:
         self.image_size = image_size
 
     def augment(self, image):
-        return np.rot90(image, 1, (1, 2))
+        return torch.rot90(image, 1, (1, 2))
 
     def batch_augment(self, images):
-        return np.rot90(images, 1, (2, 3))
+        return torch.rot90(images, 1, (2, 3))
 
     def deaugment_boxes(self, boxes):
         res_boxes = boxes.copy()
@@ -63,15 +63,15 @@ class ttaCompose:
         self.transforms = transforms
 
     def augment(self, image):
-        res_images = image.copy()
+        res_images = image
         for transform in self.transforms:
-            image = transform.augment(res_images)
+            res_images = transform.augment(res_images)
         return res_images
 
     def batch_augment(self, images):
-        res_images = images.copy()
+        res_images = images
         for transform in self.transforms:
-            images = transform.batch_augment(res_images)
+            res_images = transform.batch_augment(res_images)
         return res_images
 
     def prepare_boxes(self, boxes):

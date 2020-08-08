@@ -1,3 +1,37 @@
+"""Inheritance from torch Dataset. Add mosaic and mixup in data retriever.
+Example:
+    from squirrelfriends.chameleon import get_transforms, datasetRetriever
+    from torch.utils.data import DataLoader
+    
+    bbox_params = aug.BboxParams(
+                format='pascal_voc',
+                min_area=0,
+                min_visibility=0,
+                label_fields=["labels"]
+            )
+    transformers = get_transforms(bbox_params=bbox_params, level="light")
+
+    train_dataset = datasetRetriever(
+        image_path=TRAIN_ROOT_PATH,
+        image_ids=images,
+        transforms=transformers["train"],
+        phase="train",
+        bboxes=marking[["image_id", "x_min", "y_min", "x_max", "y_max"]],
+        llabels=marking[["image_id","labels"]],
+    )
+
+    def collate_fn(batch): return tuple(zip(*batch))
+
+    data_loader = DataLoader(
+        dataset,
+        batch_size=4,
+        shuffle=False,
+        num_workers=4,
+        drop_last=False,
+        collate_fn=collate_fn
+    )
+"""
+
 import random
 
 import cv2
