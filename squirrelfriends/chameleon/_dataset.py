@@ -10,11 +10,15 @@ class datasetRetriever(Dataset):
     """Retrieve Dataset.
 
     Attributes:
-        image_path
-        image_ids
-        transforms
-        phase (str): "training", "validation", "testing"
-        bbox: The `pascal_voc` format: `[x_min, y_min, x_max, y_max]`
+        image_path (str): path of image files.
+        image_ids (list of array): image ids.
+        transforms: transformer of image.
+        origin_mosaic_mixup_prob: probability of original,
+            mosaic and mixup image in train phase.
+        phase (str): "train", "valid", "test"
+        bbox (array): The `pascal_voc` format:
+            `[x_min, y_min, x_max, y_max]`, default None.
+        llabels (array): labels of all images, default None.
     """
 
     def __init__(self,
@@ -40,16 +44,16 @@ class datasetRetriever(Dataset):
     def __getitem__(self, index: int):
         image_id = self.image_ids[index]
 
-        if self.phase == "testing":
+        if self.phase == "test":
             image = self.load_image_only(index)
             return image, image_id
 
-        elif self.phase == "validation":
+        elif self.phase == "valid":
             image, boxes, labels = self.load_image_and_boxes(index)
             target = self.generate_target(index, image, boxes, labels)
             return image, target, image_id
 
-        elif self.phase == "training":
+        elif self.phase == "train":
             p = random.random()
 
             if p <= self.origin_mosaic_mixup_prob[0]:
@@ -66,7 +70,13 @@ class datasetRetriever(Dataset):
 
         return image, target, image_id
 
+    def __len__(self) -> int:
+        return self.image_ids.shape[0]
+
     def generate_target(self, index, image, boxes, labels):
+        """Generate target of train and valid.
+        """
+
         image, boxes, labels = self.apply_transform(image, boxes, labels)
         target = {}
         target["image_id"] = torch.tensor([index])
@@ -77,6 +87,9 @@ class datasetRetriever(Dataset):
         return target
 
     def apply_transform(self, image, boxes, labels):
+        """Apply transforms on images and boxes if exists.
+        """
+
         if self.transforms:
             if boxes is not None and len(boxes) > 0:
                 for _ in range(10):
@@ -112,10 +125,10 @@ class datasetRetriever(Dataset):
 
         return image, boxes, labels
 
-    def __len__(self) -> int:
-        return self.image_ids.shape[0]
-
     def load_image(self, index):
+        """Load image file and normalized it.
+        """
+
         image_id = self.image_ids[index]
         image_id = (image_id if "pseudo_" not in image_id
                     else image_id.replace("pseudo_", ""))
@@ -126,6 +139,9 @@ class datasetRetriever(Dataset):
         return image
 
     def load_image_only(self, index):
+        """Load image function for test, which does not need target.
+        """
+
         image = self.load_image(index)
         if self.transforms:
             sample = {"image": image}
@@ -134,6 +150,8 @@ class datasetRetriever(Dataset):
         return image
 
     def load_image_and_boxes(self, index):
+        """Load original image and boxes if exist, and labels.
+        """
 
         image_id = self.image_ids[index]
         image = self.load_image(index)
@@ -153,6 +171,8 @@ class datasetRetriever(Dataset):
         return image, boxes, labels
 
     def load_mosaic_image_and_boxes(self, index):
+        """Load image and apply mosaic on image and boxes if exist, and labels.
+        """
 
         w, h = self.image_size[0], self.image_size[1]
 
@@ -224,6 +244,8 @@ class datasetRetriever(Dataset):
         return result_image, result_boxes, result_labels
 
     def load_mixup_image_and_boxes(self, index):
+        """Load image and apply mixup on image and boxes if exist, and labels.
+        """
 
         origin_frac = np.clip(np.random.beta(1.0, 1.0), 0.35, 0.65)
 

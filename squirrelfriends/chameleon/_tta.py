@@ -1,4 +1,11 @@
 
+""" Predict with Test Time Augmentation (TTA)
+   Additional to the original test/validation images, apply image augmentation to them
+   (just like for training images). The intent
+   is to increase the accuracy of predictions by examining the images using multiple
+   perspectives.
+"""
+
 from itertools import product
 
 import numpy as np
@@ -52,7 +59,6 @@ class rotate90:
 
 
 class ttaCompose:
-
     def __init__(self, transforms):
         self.transforms = transforms
 
@@ -84,6 +90,16 @@ class ttaCompose:
 
 
 def get_tta_transformers(image_size):
+    """
+    Get transformers of TTA*8, 8 possible perspectives of an image.
+
+    Args:
+        image_size (int): image size.
+
+    Returns:
+        tta_transforms(list(ttaCompose)): list of 8 ttaCompose.
+    """
+
     tta_transforms = []
     for combo in product([horizontalFlip(image_size), None],
                          [verticalFlip(image_size), None],
