@@ -28,7 +28,7 @@ def get_transforms(in_size=[1024, 1024],
         additional_targets (dict): Dict with keys - new target name, values - old target name. ex: {"image2": "image"}.
 
     Returns:
-        aug_compose (Compose): common Compose transforms for train images
+        phase_transforms (dict(Compose)): Compose transforms for train / valid / test images.
     """
 
     phase_transforms = {}
@@ -43,7 +43,7 @@ def get_transforms(in_size=[1024, 1024],
         keypoint_params=keypoint_params,
         additional_targets=additional_targets
     )
-    phase_transforms["valid"] = get_train_transforms(
+    phase_transforms["valid"] = get_valid_transforms(
         in_size=in_size,
         out_size=out_size,
         to_tensorv2=to_tensorv2,
@@ -51,7 +51,7 @@ def get_transforms(in_size=[1024, 1024],
         keypoint_params=keypoint_params,
         additional_targets=additional_targets
     )
-    phase_transforms["test"] = get_train_transforms(
+    phase_transforms["test"] = get_test_transforms(
         in_size=in_size,
         out_size=out_size,
         to_tensorv2=to_tensorv2
@@ -86,7 +86,7 @@ def get_train_transforms(in_size=[1024, 1024],
         additional_targets (dict): Dict with keys - new target name, values - old target name. ex: {"image2": "image"}.
 
     Returns:
-        aug_compose (Compose): common Compose transforms for train images
+        aug_compose (Compose): common Compose transforms for train images.
     """
 
     if level == "light":
@@ -233,7 +233,7 @@ def get_valid_transforms(in_size=[1024, 1024],
         additional_targets (dict): Dict with keys - new target name, values - old target name. ex: {"image2": "image"}.
 
     Returns:
-        aug_compose (Compose): common Compose transforms for valid images
+        aug_compose (Compose): common Compose transforms for valid images.
     """
 
     compose_lst = [
@@ -270,7 +270,7 @@ def get_test_transforms(in_size=[1024, 1024],
         to_tensorv2 (boolean): if converting it to pytorch tensor.
 
     Returns:
-        aug_compose (Compose): common Compose transforms for test images
+        aug_compose (Compose): common Compose transforms for test images.
     """
 
     compose_lst = [
