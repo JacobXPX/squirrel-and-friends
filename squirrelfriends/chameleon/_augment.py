@@ -139,20 +139,11 @@ def get_train_transforms(in_size=[1024, 1024],
                 gamma_limit=(int(80 * level_ratio), int(120 * level_ratio)),
                 p=prob
             ),
-            aug.CLAHE(
-                clip_limit=4.0 * level_ratio,
-                tile_grid_size=(int(8 * level_ratio), int(8 * level_ratio)),
-                p=prob
-            ),
         ],
             p=prob
         ),
         aug.OneOf([
             aug.MotionBlur(
-                blur_limit=int(7 * level_ratio),
-                p=prob
-            ),
-            aug.MedianBlur(
                 blur_limit=int(7 * level_ratio),
                 p=prob
             ),
@@ -192,8 +183,8 @@ def get_train_transforms(in_size=[1024, 1024],
         compose_lst.append(
             aug.Cutout(
                 num_holes=8,
-                max_h_size=int(out_size//16),
-                max_w_size=int(out_size//16),
+                max_h_size=int(out_size[1]//16),
+                max_w_size=int(out_size[0]//16),
                 fill_value=0,
                 p=prob
             )

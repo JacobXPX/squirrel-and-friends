@@ -16,7 +16,7 @@ class datasetRetriever(Dataset):
         origin_mosaic_mixup_prob: probability of original,
             mosaic and mixup image in train phase.
         phase (str): "train", "valid", "test"
-        bbox (array): The `pascal_voc` format:
+        bboxes (array): The `pascal_voc` format:
             `[x_min, y_min, x_max, y_max]`, default None.
         llabels (array): labels of all images, default None.
     """
@@ -39,7 +39,7 @@ class datasetRetriever(Dataset):
         self.phase = phase
         self.bboxes = bboxes
         self.llabels = llabels
-        self.image_size = self.load_image(0)[:2]
+        self.image_size = self.load_image(0).shape[:2]
 
     def __getitem__(self, index: int):
         image_id = self.image_ids[index]
@@ -50,7 +50,7 @@ class datasetRetriever(Dataset):
 
         elif self.phase == "valid":
             image, boxes, labels = self.load_image_and_boxes(index)
-            target = self.generate_target(index, image, boxes, labels)
+            image, target = self.generate_target(index, image, boxes, labels)
             return image, target, image_id
 
         elif self.phase == "train":
@@ -63,12 +63,10 @@ class datasetRetriever(Dataset):
             else:
                 image, boxes, labels = self.load_mixup_image_and_boxes(index)
 
-            target = self.generate_target(index, image, boxes, labels)
+            image, target = self.generate_target(index, image, boxes, labels)
             return image, target, image_id
         else:
             raise Exception("please set a right phase")
-
-        return image, target, image_id
 
     def __len__(self) -> int:
         return self.image_ids.shape[0]
@@ -84,7 +82,7 @@ class datasetRetriever(Dataset):
             target["boxes"] = boxes
         if labels is not None:
             target["labels"] = labels
-        return target
+        return image, target
 
     def apply_transform(self, image, boxes, labels):
         """Apply transforms on images and boxes if exists.
@@ -102,10 +100,9 @@ class datasetRetriever(Dataset):
                         image = sample["image"]
                         boxes = torch.stack(
                             tuple(map(torch.tensor, zip(*sample["bboxes"])))).permute(1, 0)
-                        # boxes[:, [0, 1, 2, 3]] = target["boxes"][:, [
-                        #     1, 0, 3, 2]]  # yxyx: be warning
-                        labels = torch.stack(
-                            tuple(map(torch.tensor, zip(*sample["labels"])))).permute(1, 0)
+                        boxes[:, [0, 1, 2, 3]] = boxes[:, [
+                            1, 0, 3, 2]]  # yxyx: be warning
+                        labels = torch.tensor(sample["labels"])
                         break
             else:
                 boxes = None
@@ -164,7 +161,7 @@ class datasetRetriever(Dataset):
 
         if self.llabels is not None:
             llabel = self.llabels[self.llabels["image_id"] == image_id]
-            labels = llabel[["label"]].values
+            labels = llabel["labels"].values
         else:
             labels = None
 
@@ -221,10 +218,10 @@ class datasetRetriever(Dataset):
             result_labels = np.concatenate(result_labels, 0)
 
             # correct boxes
-            np.clip(result_boxes[:, [0, 2]], 0,
-                    self.image_size[0], out=result_boxes[:, [0, 2]])
-            np.clip(result_boxes[:, [1, 3]], 0,
-                    self.image_size[1], out=result_boxes[:, [1, 3]])
+            result_boxes[:, [0, 2]] = np.clip(result_boxes[:, [0, 2]], 0,
+                                              self.image_size[0])
+            result_boxes[:, [1, 3]] = np.clip(result_boxes[:, [1, 3]], 0,
+                                              self.image_size[1])
             result_boxes = result_boxes.astype(np.int32)
 
             valid_boxes = (result_boxes[:, 2]-result_boxes[:, 0]) * \
@@ -256,8 +253,8 @@ class datasetRetriever(Dataset):
         result_image = origin_frac * image + (1 - origin_frac) * r_image
 
         if boxes is not None:
-            result_boxes = np.vstack((boxes, r_boxes)).astype(np.int32)
-            result_labels = np.vstack((labels, r_labels)).astype(np.int32)
+            result_boxes = np.concatenate((boxes, r_boxes)).astype(np.int32)
+            result_labels = np.concatenate((labels, r_labels)).astype(np.int32)
         else:
             result_boxes = None
             if labels is not None:
