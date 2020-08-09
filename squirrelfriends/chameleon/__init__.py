@@ -3,12 +3,14 @@ from ._augment import (get_test_transforms, get_train_transforms,
 from ._dataset import datasetRetriever
 from ._tta import (get_tta_transformers, horizontalFlip, rotate90, ttaCompose,
                    verticalFlip)
-from ._visualize import draw_rectangles, get_image_list, imgs_plot
+from ._visualize import (draw_rectangles, get_image_list, imgs_file_plot,
+                         imgs_plot)
 
 __all__ = [
     "get_image_list",
     "draw_rectangles",
     "imgs_plot",
+    "imgs_file_plot",
     "get_transforms",
     "get_train_transforms",
     "get_valid_transforms",

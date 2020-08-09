@@ -5,6 +5,7 @@ from math import ceil
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+from ..utils import check_consistent_length
 
 
 def get_image_list(path, extension="jpg"):
@@ -56,11 +57,10 @@ def imgs_plot(imgs, ncols, titles, suptitle=None):
         ncols (int): number of columns of subplot.
         tiltes (list): list of titiles for each subplot.
         suptitle (str): suptitle of plot.
-
-    Returns:
-        grid (matplotlib Axes): axes object with the distplot.
     """
 
+    check_consistent_length(imgs, titles)
+    ncols = min(len(imgs), ncols)
     grid, ax = plt.subplots(figsize=(20, 15),
                             nrows=ceil(len(imgs) / ncols),
                             ncols=ncols)
@@ -70,8 +70,36 @@ def imgs_plot(imgs, ncols, titles, suptitle=None):
     grid.subplots_adjust(wspace=0.3)
     grid.subplots_adjust(hspace=0.3)
 
-    for i, (img, title) in enumerate(zip(imgs, titles)):
-        ax[i // ncols][i % ncols].imshow(img)
-        ax[i // ncols][i % ncols].set_title(title, fontsize=15)
+    print(ax)
+    for cnt, (img, title) in enumerate(zip(imgs, titles)):
+        j = cnt // ncols
+        i = cnt % ncols
+        # Get correct ax per subplot
+        if type(ax) is not np.ndarray:
+            plot_ax = ax
+        elif len(ax.shape) == 2:
+            plot_ax = ax[j][i]
+        else:
+            plot_ax = ax[i]
+        plot_ax.imshow(img)
+        plot_ax.set_title(title, fontsize=15)
 
-    return grid
+
+def imgs_file_plot(path, img_files_list, ncols=4, suptitle=None):
+    """Plot multiple images.
+
+    Args:
+        path (str): folder path of image files.
+        img_files_list (list(str)): list of image file name.
+        ncols (int): number of columns of subplot.
+        suptitle (str): suptitle of plot.
+    """
+
+    imgs = []
+
+    for img_file in img_files_list:
+        image_file_path = os.path.join(path, img_file)
+        img = cv2.imread(image_file_path)[:, :, ::-1]
+        imgs.append(img)
+
+    imgs_plot(imgs, ncols=4, titles=img_files_list, suptitle=None)
